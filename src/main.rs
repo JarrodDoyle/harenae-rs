@@ -1,5 +1,44 @@
 mod gfx;
 
+use winit::{
+    dpi::PhysicalSize,
+    event::*,
+    event_loop::{ControlFlow, EventLoop},
+    window::WindowBuilder,
+};
+
+pub async fn run() {
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("Haranae")
+        .with_inner_size(PhysicalSize::new(1280, 720))
+        .build(&event_loop)
+        .unwrap();
+
+    let render_ctx = gfx::Context::new(&window, wgpu::Limits::default()).await;
+
+    event_loop.run(move |event, _, control_flow| match event {
+        Event::WindowEvent {
+            ref event,
+            window_id,
+        } if window_id == window.id() => match event {
+            WindowEvent::CloseRequested
+            | WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::Escape),
+                        ..
+                    },
+                ..
+            } => *control_flow = ControlFlow::Exit,
+            _ => {}
+        },
+        _ => {}
+    });
+}
+
 fn main() {
-    println!("Hello, world!");
+    env_logger::init();
+    pollster::block_on(run());
 }
