@@ -15,7 +15,7 @@ pub async fn run() {
         .build(&event_loop)
         .unwrap();
 
-    let render_ctx = gfx::Context::new(&window, wgpu::Limits::default()).await;
+    let mut render_ctx = gfx::Context::new(&window, wgpu::Limits::default()).await;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -32,6 +32,12 @@ pub async fn run() {
                     },
                 ..
             } => *control_flow = ControlFlow::Exit,
+            WindowEvent::Resized(physical_size) => {
+                render_ctx.resize(*physical_size);
+            }
+            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                render_ctx.resize(**new_inner_size);
+            }
             _ => {}
         },
         _ => {}
