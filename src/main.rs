@@ -40,6 +40,43 @@ pub async fn run() {
             }
             _ => {}
         },
+        Event::RedrawRequested(window_id) if window_id == render_ctx.window.id() => {
+            let output = match render_ctx.surface.get_current_texture() {
+                Ok(it) => it,
+                Err(err) => return log::error!("{err}"),
+            };
+
+            let view = output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+
+            let mut encoder =
+                render_ctx
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Render encoder"),
+                    });
+
+            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+            drop(_render_pass);
+
+            render_ctx.queue.submit(std::iter::once(encoder.finish()));
+            output.present();
+        }
+        Event::MainEventsCleared => {
+            render_ctx.window.request_redraw();
+        }
         _ => {}
     });
 }
