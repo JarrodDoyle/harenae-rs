@@ -15,13 +15,13 @@ pub async fn run() {
         .build(&event_loop)
         .unwrap();
 
-    let mut render_ctx = gfx::Context::new(&window, wgpu::Limits::default()).await;
+    let mut render_ctx = gfx::Context::new(window, wgpu::Limits::default()).await;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
             ref event,
             window_id,
-        } if window_id == window.id() => match event {
+        } if window_id == render_ctx.window.id() => match event {
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
                 input:
