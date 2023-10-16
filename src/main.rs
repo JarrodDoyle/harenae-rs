@@ -17,6 +17,55 @@ pub async fn run() {
 
     let mut render_ctx = gfx::Context::new(window, wgpu::Limits::default()).await;
 
+    let shader = render_ctx
+        .device
+        .create_shader_module(wgpu::include_wgsl!("../res/shaders/main.wgsl"));
+    let render_pipeline_layout =
+        render_ctx
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("RP Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            });
+    let render_pipeline =
+        render_ctx
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: render_ctx.surface_config.format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    unclipped_depth: false,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview: None,
+            });
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
             ref event,
@@ -57,7 +106,7 @@ pub async fn run() {
                         label: Some("Render encoder"),
                     });
 
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -69,7 +118,10 @@ pub async fn run() {
                 })],
                 depth_stencil_attachment: None,
             });
-            drop(_render_pass);
+            render_pass.set_pipeline(&render_pipeline);
+            render_pass.draw(0..3, 0..1);
+
+            drop(render_pass);
 
             render_ctx.queue.submit(std::iter::once(encoder.finish()));
             output.present();
