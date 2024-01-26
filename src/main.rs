@@ -1,3 +1,5 @@
+mod falling_sand;
+
 use bevy::{prelude::*, window::PresentMode};
 
 fn main() {
@@ -17,6 +19,7 @@ fn main() {
                 .set(window_plugin)
                 .set(ImagePlugin::default_nearest()),
         )
+        .add_plugins(falling_sand::FallingSandPlugin)
         .add_systems(Startup, setup)
         .insert_resource(ClearColor(Color::rgb_u8(45, 42, 46)))
         .run();
