@@ -65,15 +65,16 @@ pub fn update_chunk_texture_system(
     }
 
     let (chunk, image_handle) = chunk.unwrap();
-    let image = images.get_mut(image_handle).unwrap();
-    for y in 0..chunk.height {
-        for x in 0..chunk.width {
-            // Just set each pixel to random colours for now
-            let index = (x + y * chunk.width) * 4;
-            image.data[index] = random::<u8>();
-            image.data[index + 1] = random::<u8>();
-            image.data[index + 2] = random::<u8>();
-            image.data[index + 3] = 255;
+    if let Some(image) = images.get_mut(image_handle) {
+        for y in 0..chunk.height {
+            for x in 0..chunk.width {
+                // Just set each pixel to random colours for now
+                let index = (x + y * chunk.width) * 4;
+                image.data[index] = random::<u8>();
+                image.data[index + 1] = random::<u8>();
+                image.data[index + 2] = random::<u8>();
+                image.data[index + 3] = 255;
+            }
         }
     }
 }
