@@ -46,23 +46,16 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
 
     let image_handle = images.add(image);
 
-    commands
-        .spawn(Chunk {
-            width: 256,
-            height: 256,
-            cells: vec![Elements::Air; 256 * 256],
-            dirty_rect: DirtyRect::default(),
-        })
-        .insert(SpriteBundle {
-            sprite: Sprite {
-                flip_y: true,
-                ..default()
-            },
-            texture: image_handle,
-            transform: Transform::from_translation(Vec3::new(256., 0., 0.))
-                .with_scale(Vec3::new(2., 2., 0.)),
+    commands.spawn(Chunk::new(256, 256)).insert(SpriteBundle {
+        sprite: Sprite {
+            flip_y: true,
             ..default()
-        });
+        },
+        texture: image_handle,
+        transform: Transform::from_translation(Vec3::new(256., 0., 0.))
+            .with_scale(Vec3::new(2., 2., 0.)),
+        ..default()
+    });
 }
 
 #[derive(Component)]
@@ -71,6 +64,17 @@ pub struct Chunk {
     height: usize,
     cells: Vec<Elements>,
     dirty_rect: DirtyRect,
+}
+
+impl Chunk {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            cells: vec![Elements::Air; width * height],
+            dirty_rect: DirtyRect::default(),
+        }
+    }
 }
 
 pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
