@@ -75,6 +75,15 @@ impl Chunk {
             dirty_rect: DirtyRect::default(),
         }
     }
+
+    pub fn set_cell(&mut self, x: usize, y: usize, element: Element) {
+        if x >= self.width || y >= self.height {
+            return;
+        }
+
+        self.cells[x + y * self.width] = element;
+        self.dirty_rect.add_point(x, y);
+    }
 }
 
 pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
@@ -88,9 +97,7 @@ pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
     let frac = chunk.width / 2;
     let x = (chunk.width - frac) / 2 + rand::thread_rng().gen_range(0..frac);
     let y = chunk.height - 1;
-    let index = x + y * chunk.width;
-    chunk.cells[index] = Element::Sand;
-    chunk.dirty_rect.add_point(x, y);
+    chunk.set_cell(x, y, Element::Sand);
 }
 
 pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
