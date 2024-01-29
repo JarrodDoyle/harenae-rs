@@ -44,6 +44,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
             width: 256,
             height: 256,
             cells: vec![Elements::Air; 256 * 256],
+            dirty_rect: DirtyRect::default(),
         })
         .insert(SpriteBundle {
             sprite: Sprite {
@@ -57,11 +58,63 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         });
 }
 
+#[derive(Debug, Default)]
+struct DirtyRect {
+    dirty: bool,
+    rect: (usize, usize, usize, usize),
+}
+
+impl DirtyRect {
+    fn new() -> Self {
+        Self {
+            dirty: false,
+            rect: (usize::MAX, usize::MAX, usize::MIN, usize::MIN),
+        }
+    }
+
+    fn range_x(&self) -> std::ops::RangeInclusive<usize> {
+        self.rect.0..=self.rect.2
+    }
+
+    fn range_y(&self) -> std::ops::RangeInclusive<usize> {
+        self.rect.1..=self.rect.3
+    }
+
+    fn reset(&mut self) {
+        self.dirty = false;
+        self.rect = (usize::MAX, usize::MAX, usize::MIN, usize::MIN);
+    }
+
+    fn add_point(&mut self, x: usize, y: usize) {
+        if x < self.rect.0 {
+            self.rect.0 = x;
+            self.dirty = true;
+        }
+        if x > self.rect.2 {
+            self.rect.2 = x;
+            self.dirty = true;
+        }
+        if y < self.rect.1 {
+            self.rect.1 = y;
+            self.dirty = true;
+        }
+        if y > self.rect.3 {
+            self.rect.3 = y;
+            self.dirty = true;
+        }
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+}
+
 #[derive(Component)]
 pub struct Chunk {
     width: usize,
     height: usize,
     cells: Vec<Elements>,
+    dirty_rect: DirtyRect,
 }
 
 pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
@@ -93,6 +146,8 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                         let bottom = chunk.cells.get(b_index).unwrap();
                         if *bottom == Elements::Air {
                             chunk.cells.swap(index, b_index);
+                            chunk.dirty_rect.add_point(x, y);
+                            chunk.dirty_rect.add_point(x, y - 1);
                             continue;
                         }
 
@@ -101,6 +156,8 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                             let bottom_left = chunk.cells.get(bl_index).unwrap();
                             if *bottom_left == Elements::Air {
                                 chunk.cells.swap(index, bl_index);
+                                chunk.dirty_rect.add_point(x, y);
+                                chunk.dirty_rect.add_point(x - 1, y - 1);
                                 continue;
                             }
                         }
@@ -110,6 +167,8 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                             let bottom_right = chunk.cells.get(br_index).unwrap();
                             if *bottom_right == Elements::Air {
                                 chunk.cells.swap(index, br_index);
+                                chunk.dirty_rect.add_point(x, y);
+                                chunk.dirty_rect.add_point(x + 1, y - 1);
                                 continue;
                             }
                         }
@@ -130,10 +189,14 @@ pub fn update_chunk_texture_system(
         return;
     }
 
-    let (chunk, image_handle) = chunk.unwrap();
+    let (mut chunk, image_handle) = chunk.unwrap();
+    if !chunk.dirty_rect.is_dirty() {
+        return;
+    }
+
     if let Some(image) = images.get_mut(image_handle) {
-        for y in 0..chunk.height {
-            for x in 0..chunk.width {
+        for y in chunk.dirty_rect.range_y() {
+            for x in chunk.dirty_rect.range_x() {
                 let mut colour = (0, 0, 0);
                 if let Some(element) = chunk.cells.get(x + y * chunk.width) {
                     match element {
@@ -150,6 +213,8 @@ pub fn update_chunk_texture_system(
             }
         }
     }
+
+    chunk.dirty_rect.reset();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
