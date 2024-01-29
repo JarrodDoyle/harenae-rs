@@ -84,6 +84,18 @@ impl Chunk {
         self.cells[x + y * self.width] = element;
         self.dirty_rect.add_point(x, y);
     }
+
+    pub fn swap_cells(&mut self, x0: usize, y0: usize, x1: usize, y1: usize) {
+        if x0 >= self.width || y0 >= self.height || x1 >= self.width || y1 >= self.height {
+            return;
+        }
+
+        let i0 = x0 + y0 * self.width;
+        let i1 = x1 + y1 * self.width;
+        self.cells.swap(i0, i1);
+        self.dirty_rect.add_point(x0, y0);
+        self.dirty_rect.add_point(x1, y1);
+    }
 }
 
 pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
@@ -121,9 +133,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                         let b_index = index - chunk.width;
                         let bottom = chunk.cells.get(b_index).unwrap();
                         if *bottom == Element::Air {
-                            chunk.cells.swap(index, b_index);
-                            chunk.dirty_rect.add_point(x, y);
-                            chunk.dirty_rect.add_point(x, y - 1);
+                            chunk.swap_cells(x, y, x, y - 1);
                             continue;
                         }
 
@@ -131,9 +141,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                             let bl_index = b_index - 1;
                             let bottom_left = chunk.cells.get(bl_index).unwrap();
                             if *bottom_left == Element::Air {
-                                chunk.cells.swap(index, bl_index);
-                                chunk.dirty_rect.add_point(x, y);
-                                chunk.dirty_rect.add_point(x - 1, y - 1);
+                                chunk.swap_cells(x, y, x - 1, y - 1);
                                 continue;
                             }
                         }
@@ -142,9 +150,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                             let br_index = b_index + 1;
                             let bottom_right = chunk.cells.get(br_index).unwrap();
                             if *bottom_right == Element::Air {
-                                chunk.cells.swap(index, br_index);
-                                chunk.dirty_rect.add_point(x, y);
-                                chunk.dirty_rect.add_point(x + 1, y - 1);
+                                chunk.swap_cells(x, y, x + 1, y - 1);
                                 continue;
                             }
                         }
