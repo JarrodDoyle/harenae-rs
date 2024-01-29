@@ -62,7 +62,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
 pub struct Chunk {
     width: usize,
     height: usize,
-    cells: Vec<Elements>,
+    cells: Vec<Element>,
     dirty_rect: DirtyRect,
 }
 
@@ -71,7 +71,7 @@ impl Chunk {
         Self {
             width,
             height,
-            cells: vec![Elements::Air; width * height],
+            cells: vec![Element::Air; width * height],
             dirty_rect: DirtyRect::default(),
         }
     }
@@ -89,7 +89,7 @@ pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
     let x = (chunk.width - frac) / 2 + rand::thread_rng().gen_range(0..frac);
     let y = chunk.height - 1;
     let index = x + y * chunk.width;
-    chunk.cells[index] = Elements::Sand;
+    chunk.cells[index] = Element::Sand;
     chunk.dirty_rect.add_point(x, y);
 }
 
@@ -108,12 +108,12 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
             let index = x + y * chunk.width;
             let element = chunk.cells.get(index).unwrap();
             match element {
-                Elements::Air => {}
-                Elements::Sand => {
+                Element::Air => {}
+                Element::Sand => {
                     if y != 0 {
                         let b_index = index - chunk.width;
                         let bottom = chunk.cells.get(b_index).unwrap();
-                        if *bottom == Elements::Air {
+                        if *bottom == Element::Air {
                             chunk.cells.swap(index, b_index);
                             chunk.dirty_rect.add_point(x, y);
                             chunk.dirty_rect.add_point(x, y - 1);
@@ -123,7 +123,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                         if x != 0 {
                             let bl_index = b_index - 1;
                             let bottom_left = chunk.cells.get(bl_index).unwrap();
-                            if *bottom_left == Elements::Air {
+                            if *bottom_left == Element::Air {
                                 chunk.cells.swap(index, bl_index);
                                 chunk.dirty_rect.add_point(x, y);
                                 chunk.dirty_rect.add_point(x - 1, y - 1);
@@ -134,7 +134,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                         if x != chunk.width - 1 {
                             let br_index = b_index + 1;
                             let bottom_right = chunk.cells.get(br_index).unwrap();
-                            if *bottom_right == Elements::Air {
+                            if *bottom_right == Element::Air {
                                 chunk.cells.swap(index, br_index);
                                 chunk.dirty_rect.add_point(x, y);
                                 chunk.dirty_rect.add_point(x + 1, y - 1);
@@ -169,8 +169,8 @@ pub fn update_chunk_texture_system(
                 let mut colour = (0, 0, 0);
                 if let Some(element) = chunk.cells.get(x + y * chunk.width) {
                     match element {
-                        Elements::Air => colour = (25, 24, 26),
-                        Elements::Sand => colour = (255, 216, 102),
+                        Element::Air => colour = (25, 24, 26),
+                        Element::Sand => colour = (255, 216, 102),
                     }
                 }
 
@@ -187,7 +187,7 @@ pub fn update_chunk_texture_system(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum Elements {
+pub enum Element {
     Air,
     Sand,
 }
