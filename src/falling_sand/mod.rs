@@ -132,34 +132,26 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
     // Simulate sand
     for y in 0..chunk.height {
         for x in 0..chunk.width {
-            let element = chunk.get_cell(x, y).unwrap();
-            match element {
-                Element::Air => {}
-                Element::Sand => {
+            match chunk.get_cell(x, y) {
+                Some(&Element::Air) => {}
+                Some(&Element::Sand) => {
                     if y == 0 {
                         continue;
                     }
 
-                    // Bottom
-                    if *chunk.get_cell(x, y - 1).unwrap() == Element::Air {
+                    let bottom = chunk.get_cell(x, y - 1);
+                    let bottom_left = chunk.get_cell(x - 1, y - 1);
+                    let bottom_right = chunk.get_cell(x + 1, y - 1);
+
+                    if bottom == Some(&Element::Air) {
                         chunk.swap_cells(x, y, x, y - 1);
-                        continue;
-                    }
-
-                    // Bottom left
-                    if x != 0 && *chunk.get_cell(x - 1, y - 1).unwrap() == Element::Air {
+                    } else if x != 0 && bottom_left == Some(&Element::Air) {
                         chunk.swap_cells(x, y, x - 1, y - 1);
-                        continue;
-                    }
-
-                    // Bottom right
-                    if x != chunk.width - 1
-                        && *chunk.get_cell(x + 1, y - 1).unwrap() == Element::Air
-                    {
+                    } else if x != chunk.width - 1 && bottom_right == Some(&Element::Air) {
                         chunk.swap_cells(x, y, x + 1, y - 1);
-                        continue;
                     }
                 }
+                None => {}
             }
         }
     }
