@@ -136,28 +136,28 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
             match element {
                 Element::Air => {}
                 Element::Sand => {
-                    if y != 0 {
-                        let bottom = chunk.get_cell(x, y - 1).unwrap();
-                        if *bottom == Element::Air {
-                            chunk.swap_cells(x, y, x, y - 1);
-                            continue;
-                        }
+                    if y == 0 {
+                        continue;
+                    }
 
-                        if x != 0 {
-                            let bottom_left = chunk.get_cell(x - 1, y - 1).unwrap();
-                            if *bottom_left == Element::Air {
-                                chunk.swap_cells(x, y, x - 1, y - 1);
-                                continue;
-                            }
-                        }
+                    // Bottom
+                    if *chunk.get_cell(x, y - 1).unwrap() == Element::Air {
+                        chunk.swap_cells(x, y, x, y - 1);
+                        continue;
+                    }
 
-                        if x != chunk.width - 1 {
-                            let bottom_right = chunk.get_cell(x + 1, y - 1).unwrap();
-                            if *bottom_right == Element::Air {
-                                chunk.swap_cells(x, y, x + 1, y - 1);
-                                continue;
-                            }
-                        }
+                    // Bottom left
+                    if x != 0 && *chunk.get_cell(x - 1, y - 1).unwrap() == Element::Air {
+                        chunk.swap_cells(x, y, x - 1, y - 1);
+                        continue;
+                    }
+
+                    // Bottom right
+                    if x != chunk.width - 1
+                        && *chunk.get_cell(x + 1, y - 1).unwrap() == Element::Air
+                    {
+                        chunk.swap_cells(x, y, x + 1, y - 1);
+                        continue;
                     }
                 }
             }
