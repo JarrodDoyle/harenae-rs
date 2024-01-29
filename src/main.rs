@@ -1,4 +1,5 @@
 mod falling_sand;
+mod util;
 
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},

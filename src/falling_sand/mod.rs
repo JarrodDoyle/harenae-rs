@@ -13,6 +13,8 @@ use bevy::{
 };
 use rand::Rng;
 
+use crate::util::DirtyRect;
+
 pub struct FallingSandPlugin;
 
 impl Plugin for FallingSandPlugin {
@@ -56,57 +58,6 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
                 .with_scale(Vec3::new(2., 2., 0.)),
             ..default()
         });
-}
-
-#[derive(Debug, Default)]
-struct DirtyRect {
-    dirty: bool,
-    rect: (usize, usize, usize, usize),
-}
-
-impl DirtyRect {
-    fn new() -> Self {
-        Self {
-            dirty: false,
-            rect: (usize::MAX, usize::MAX, usize::MIN, usize::MIN),
-        }
-    }
-
-    fn range_x(&self) -> std::ops::RangeInclusive<usize> {
-        self.rect.0..=self.rect.2
-    }
-
-    fn range_y(&self) -> std::ops::RangeInclusive<usize> {
-        self.rect.1..=self.rect.3
-    }
-
-    fn reset(&mut self) {
-        self.dirty = false;
-        self.rect = (usize::MAX, usize::MAX, usize::MIN, usize::MIN);
-    }
-
-    fn add_point(&mut self, x: usize, y: usize) {
-        if x < self.rect.0 {
-            self.rect.0 = x;
-            self.dirty = true;
-        }
-        if x > self.rect.2 {
-            self.rect.2 = x;
-            self.dirty = true;
-        }
-        if y < self.rect.1 {
-            self.rect.1 = y;
-            self.dirty = true;
-        }
-        if y > self.rect.3 {
-            self.rect.3 = y;
-            self.dirty = true;
-        }
-    }
-
-    fn is_dirty(&self) -> bool {
-        self.dirty
-    }
 }
 
 #[derive(Component)]
