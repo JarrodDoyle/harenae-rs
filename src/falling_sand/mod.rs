@@ -22,7 +22,12 @@ impl Plugin for FallingSandPlugin {
         app.add_systems(Startup, setup);
         app.add_systems(
             Update,
-            (simulate_chunk_system, update_chunk_texture_system).chain(),
+            (
+                place_sand_system,
+                simulate_chunk_system,
+                update_chunk_texture_system,
+            )
+                .chain(),
         );
     }
 }
@@ -68,6 +73,22 @@ pub struct Chunk {
     dirty_rect: DirtyRect,
 }
 
+pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
+    // We know for now there's only one chunk
+    let chunk = chunk.get_single_mut();
+    if chunk.is_err() {
+        return;
+    }
+
+    let mut chunk = chunk.unwrap();
+    let frac = chunk.width / 2;
+    let x = (chunk.width - frac) / 2 + rand::thread_rng().gen_range(0..frac);
+    let y = chunk.height - 1;
+    let index = x + y * chunk.width;
+    chunk.cells[index] = Elements::Sand;
+    chunk.dirty_rect.add_point(x, y);
+}
+
 pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
     // We know for now there's only one chunk
     let chunk = chunk.get_single_mut();
@@ -75,14 +96,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
         return;
     }
 
-    let mut query = chunk.unwrap();
-    let chunk = query.as_mut();
-
-    // Place sand
-    let frac = chunk.width / 2;
-    let x = (chunk.width - frac) / 2 + rand::thread_rng().gen_range(0..frac);
-    let y = chunk.height - 1;
-    chunk.cells[x + y * chunk.width] = Elements::Sand;
+    let mut chunk = chunk.unwrap();
 
     // Simulate sand
     for y in 0..chunk.height {
