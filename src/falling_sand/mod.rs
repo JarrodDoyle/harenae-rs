@@ -31,6 +31,7 @@ impl Plugin for FallingSandPlugin {
             )
                 .chain(),
         );
+        app.init_resource::<FallingSandRules>();
     }
 }
 
@@ -67,58 +68,16 @@ pub struct Chunk {
     height: usize,
     cells: Vec<Element>,
     dirty_rect: DirtyRect,
-    rules: HashMap<u32, u32>,
 }
 
 impl Chunk {
     pub fn new(width: usize, height: usize) -> Self {
-        // Pre-computed air-sand rules
-        let rules = HashMap::from([
-            gen_rule(
-                (Element::Air, Element::Sand, Element::Air, Element::Air),
-                (Element::Air, Element::Air, Element::Air, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Air, Element::Sand, Element::Air, Element::Sand),
-                (Element::Air, Element::Air, Element::Sand, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Air, Element::Sand, Element::Sand, Element::Air),
-                (Element::Air, Element::Air, Element::Sand, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Sand, Element::Air, Element::Air, Element::Air),
-                (Element::Air, Element::Air, Element::Sand, Element::Air),
-            ),
-            gen_rule(
-                (Element::Sand, Element::Air, Element::Air, Element::Sand),
-                (Element::Air, Element::Air, Element::Sand, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Sand, Element::Air, Element::Sand, Element::Air),
-                (Element::Air, Element::Air, Element::Sand, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Sand, Element::Sand, Element::Air, Element::Air),
-                (Element::Air, Element::Air, Element::Sand, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Sand, Element::Sand, Element::Air, Element::Sand),
-                (Element::Air, Element::Sand, Element::Sand, Element::Sand),
-            ),
-            gen_rule(
-                (Element::Sand, Element::Sand, Element::Sand, Element::Air),
-                (Element::Sand, Element::Air, Element::Sand, Element::Sand),
-            ),
-        ]);
-
         Self {
             step: 0,
             width,
             height,
             cells: vec![Element::Air; width * height],
             dirty_rect: DirtyRect::default(),
-            rules,
         }
     }
 
@@ -150,13 +109,6 @@ impl Chunk {
 
         Some(self.cells[x + y * self.width])
     }
-
-    pub fn get_rule_result(&self, input: u32) -> u32 {
-        match self.rules.get(&input) {
-            Some(&result) => result,
-            None => input,
-        }
-    }
 }
 
 pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
@@ -173,7 +125,7 @@ pub fn place_sand_system(mut chunk: Query<&mut Chunk>) {
     chunk.set_cell(x, y, Element::Sand);
 }
 
-pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
+pub fn simulate_chunk_system(rules: Res<FallingSandRules>, mut chunk: Query<&mut Chunk>) {
     // We know for now there's only one chunk
     let chunk = chunk.get_single_mut();
     if chunk.is_err() {
@@ -210,7 +162,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                 chunk.get_cell(x, y).unwrap_or(Element::None),
                 chunk.get_cell(x + 1, y).unwrap_or(Element::None),
             ));
-            let end_state = chunk.get_rule_result(start_state);
+            let end_state = rules.get_result(start_state);
 
             // We only need to actually update things if the state changed
             // Same ordering as above.
@@ -297,4 +249,64 @@ fn gen_rule(
 
 fn to_rule_state(input: (Element, Element, Element, Element)) -> u32 {
     ((input.0 as u32) << 24) + ((input.1 as u32) << 16) + ((input.2 as u32) << 8) + input.3 as u32
+}
+
+#[derive(Resource)]
+pub struct FallingSandRules {
+    rules: HashMap<u32, u32>,
+}
+
+impl Default for FallingSandRules {
+    fn default() -> Self {
+        // Pre-computed air-sand rules
+        Self {
+            rules: HashMap::from([
+                gen_rule(
+                    (Element::Air, Element::Sand, Element::Air, Element::Air),
+                    (Element::Air, Element::Air, Element::Air, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Air, Element::Sand, Element::Air, Element::Sand),
+                    (Element::Air, Element::Air, Element::Sand, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Air, Element::Sand, Element::Sand, Element::Air),
+                    (Element::Air, Element::Air, Element::Sand, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Sand, Element::Air, Element::Air, Element::Air),
+                    (Element::Air, Element::Air, Element::Sand, Element::Air),
+                ),
+                gen_rule(
+                    (Element::Sand, Element::Air, Element::Air, Element::Sand),
+                    (Element::Air, Element::Air, Element::Sand, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Sand, Element::Air, Element::Sand, Element::Air),
+                    (Element::Air, Element::Air, Element::Sand, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Sand, Element::Sand, Element::Air, Element::Air),
+                    (Element::Air, Element::Air, Element::Sand, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Sand, Element::Sand, Element::Air, Element::Sand),
+                    (Element::Air, Element::Sand, Element::Sand, Element::Sand),
+                ),
+                gen_rule(
+                    (Element::Sand, Element::Sand, Element::Sand, Element::Air),
+                    (Element::Sand, Element::Air, Element::Sand, Element::Sand),
+                ),
+            ]),
+        }
+    }
+}
+
+impl FallingSandRules {
+    pub fn get_result(&self, input_rule: u32) -> u32 {
+        match self.rules.get(&input_rule) {
+            Some(&result) => result,
+            None => input_rule,
+        }
+    }
 }
