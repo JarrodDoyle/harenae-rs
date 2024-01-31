@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use bevy::ecs::system::Resource;
+use bevy::{ecs::system::Resource, utils::HashMap};
 
 use super::Element;
 
