@@ -182,7 +182,7 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
 
     let mut chunk = chunk.unwrap();
 
-    // Simulate sand
+    // Determine which Margolus neighbourhood offset we're using this update
     let offset = if chunk.step == 0 {
         (0, 0)
     } else if chunk.step == 1 {
@@ -194,11 +194,16 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
     };
     chunk.step = (chunk.step + 1) % 4;
 
+    // We're operating on 2x2 blocks of cells
     for block_y in 0..(chunk.height / 2) {
         let y = block_y * 2 + offset.1;
         for block_x in 0..(chunk.width / 2) {
             let x = block_x * 2 + offset.0;
 
+            // Get all the cells in our block and convert them to a rule state for lookup
+            // Because our offset can cause cell look-ups to go ourside of the grid we have
+            // a default `Element::None`
+            // Cells are obtained in the order top-left, top-right, bottom-left, bottom-right
             let start_state = to_rule_state((
                 chunk.get_cell(x, y + 1).unwrap_or(Element::None),
                 chunk.get_cell(x + 1, y + 1).unwrap_or(Element::None),
@@ -206,6 +211,9 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
                 chunk.get_cell(x + 1, y).unwrap_or(Element::None),
             ));
             let end_state = chunk.get_rule_result(start_state);
+
+            // We only need to actually update things if the state changed
+            // Same ordering as above.
             if start_state != end_state {
                 if (start_state & 0xFF000000) != (end_state & 0xFF000000) {
                     chunk.set_cell(x, y + 1, Element::from((start_state >> 24) & 0xFF));
