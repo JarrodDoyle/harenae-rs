@@ -209,6 +209,7 @@ pub fn update_chunk_texture_system(
                     match element {
                         Element::Air => colour = (25, 24, 26),
                         Element::Sand => colour = (255, 216, 102),
+                        Element::Water => colour = (120, 220, 232),
                         _ => {}
                     }
                 }
@@ -230,6 +231,7 @@ pub enum Element {
     None,
     Air,
     Sand,
+    Water,
 }
 
 impl From<u32> for Element {
@@ -237,6 +239,7 @@ impl From<u32> for Element {
         match value {
             x if x == Element::Air as u32 => Element::Air,
             x if x == Element::Sand as u32 => Element::Sand,
+            x if x == Element::Water as u32 => Element::Water,
             _ => Element::None,
         }
     }
