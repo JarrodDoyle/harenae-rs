@@ -135,10 +135,3 @@ impl FallingSandRules {
 pub fn to_rule_state(input: (Element, Element, Element, Element)) -> u32 {
     ((input.0 as u32) << 24) + ((input.1 as u32) << 16) + ((input.2 as u32) << 8) + input.3 as u32
 }
-
-fn gen_rule(
-    input: (Element, Element, Element, Element),
-    output: (Element, Element, Element, Element),
-) -> (u32, u32) {
-    (to_rule_state(input), to_rule_state(output))
-}
