@@ -49,18 +49,23 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         TextureFormat::Rgba8UnormSrgb,
     );
 
-    let image_handle = images.add(image);
-
-    commands.spawn(Chunk::new(256, 256)).insert(SpriteBundle {
+    let sprite_bundle1 = SpriteBundle {
         sprite: Sprite {
             flip_y: true,
             ..default()
         },
-        texture: image_handle,
+        texture: images.add(image.clone()),
         transform: Transform::from_translation(Vec3::new(256., 0., 0.))
             .with_scale(Vec3::new(2., 2., 0.)),
         ..default()
-    });
+    };
+    let mut sprite_bundle2 = sprite_bundle1.clone();
+    sprite_bundle2.texture = images.add(image.clone());
+    sprite_bundle2.transform =
+        Transform::from_translation(Vec3::new(-256., 0., 0.)).with_scale(Vec3::new(2., 2., 0.));
+
+    commands.spawn(Chunk::new(256, 256)).insert(sprite_bundle1);
+    commands.spawn(Chunk::new(256, 256)).insert(sprite_bundle2);
 }
 
 #[derive(Component)]
