@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy::{
     app::{Plugin, Startup},
     asset::Assets,
@@ -60,19 +62,63 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
 
 #[derive(Component)]
 pub struct Chunk {
+    step: usize,
     width: usize,
     height: usize,
     cells: Vec<Element>,
     dirty_rect: DirtyRect,
+    rules: HashMap<u32, u32>,
 }
 
 impl Chunk {
     pub fn new(width: usize, height: usize) -> Self {
+        // Pre-computed air-sand rules
+        let rules = HashMap::from([
+            gen_rule(
+                (Element::Air, Element::Sand, Element::Air, Element::Air),
+                (Element::Air, Element::Air, Element::Air, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Air, Element::Sand, Element::Air, Element::Sand),
+                (Element::Air, Element::Air, Element::Sand, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Air, Element::Sand, Element::Sand, Element::Air),
+                (Element::Air, Element::Air, Element::Sand, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Sand, Element::Air, Element::Air, Element::Air),
+                (Element::Air, Element::Air, Element::Sand, Element::Air),
+            ),
+            gen_rule(
+                (Element::Sand, Element::Air, Element::Air, Element::Sand),
+                (Element::Air, Element::Air, Element::Sand, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Sand, Element::Air, Element::Sand, Element::Air),
+                (Element::Air, Element::Air, Element::Sand, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Sand, Element::Sand, Element::Air, Element::Air),
+                (Element::Air, Element::Air, Element::Sand, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Sand, Element::Sand, Element::Air, Element::Sand),
+                (Element::Air, Element::Sand, Element::Sand, Element::Sand),
+            ),
+            gen_rule(
+                (Element::Sand, Element::Sand, Element::Sand, Element::Air),
+                (Element::Sand, Element::Air, Element::Sand, Element::Sand),
+            ),
+        ]);
+
         Self {
+            step: 0,
             width,
             height,
             cells: vec![Element::Air; width * height],
             dirty_rect: DirtyRect::default(),
+            rules,
         }
     }
 
@@ -97,12 +143,19 @@ impl Chunk {
         self.dirty_rect.add_point(x1, y1);
     }
 
-    pub fn get_cell(&self, x: usize, y: usize) -> Option<&Element> {
+    pub fn get_cell(&self, x: usize, y: usize) -> Option<Element> {
         if x >= self.width || y >= self.height {
             return None;
         }
 
-        Some(&self.cells[x + y * self.width])
+        Some(self.cells[x + y * self.width])
+    }
+
+    pub fn get_rule_result(&self, input: u32) -> u32 {
+        match self.rules.get(&input) {
+            Some(&result) => result,
+            None => input,
+        }
     }
 }
 
@@ -130,28 +183,42 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
     let mut chunk = chunk.unwrap();
 
     // Simulate sand
-    for y in 0..chunk.height {
-        for x in 0..chunk.width {
-            match chunk.get_cell(x, y) {
-                Some(&Element::Air) => {}
-                Some(&Element::Sand) => {
-                    if y == 0 {
-                        continue;
-                    }
+    let offset = if chunk.step == 0 {
+        (0, 0)
+    } else if chunk.step == 1 {
+        (1, 1)
+    } else if chunk.step == 2 {
+        (0, 1)
+    } else {
+        (1, 0)
+    };
+    chunk.step = (chunk.step + 1) % 4;
 
-                    let bottom = chunk.get_cell(x, y - 1);
-                    let bottom_left = chunk.get_cell(x - 1, y - 1);
-                    let bottom_right = chunk.get_cell(x + 1, y - 1);
+    for block_y in 0..(chunk.height / 2) {
+        let y = block_y * 2 + offset.1;
+        for block_x in 0..(chunk.width / 2) {
+            let x = block_x * 2 + offset.0;
 
-                    if bottom == Some(&Element::Air) {
-                        chunk.swap_cells(x, y, x, y - 1);
-                    } else if x != 0 && bottom_left == Some(&Element::Air) {
-                        chunk.swap_cells(x, y, x - 1, y - 1);
-                    } else if x != chunk.width - 1 && bottom_right == Some(&Element::Air) {
-                        chunk.swap_cells(x, y, x + 1, y - 1);
-                    }
+            let start_state = to_rule_state((
+                chunk.get_cell(x, y + 1).unwrap_or(Element::None),
+                chunk.get_cell(x + 1, y + 1).unwrap_or(Element::None),
+                chunk.get_cell(x, y).unwrap_or(Element::None),
+                chunk.get_cell(x + 1, y).unwrap_or(Element::None),
+            ));
+            let end_state = chunk.get_rule_result(start_state);
+            if start_state != end_state {
+                if (start_state & 0xFF000000) != (end_state & 0xFF000000) {
+                    chunk.set_cell(x, y + 1, Element::from((start_state >> 24) & 0xFF));
                 }
-                None => {}
+                if (start_state & 0x00FF0000) != (end_state & 0x00FF0000) {
+                    chunk.set_cell(x + 1, y + 1, Element::from((start_state >> 16) & 0xFF));
+                }
+                if (start_state & 0x0000FF00) != (end_state & 0x0000FF00) {
+                    chunk.set_cell(x, y, Element::from((start_state >> 8) & 0xFF));
+                }
+                if (start_state & 0x000000FF) != (end_state & 0x000000FF) {
+                    chunk.set_cell(x + 1, y, Element::from(start_state & 0xFF));
+                }
             }
         }
     }
@@ -180,6 +247,7 @@ pub fn update_chunk_texture_system(
                     match element {
                         Element::Air => colour = (25, 24, 26),
                         Element::Sand => colour = (255, 216, 102),
+                        _ => {}
                     }
                 }
 
@@ -197,6 +265,28 @@ pub fn update_chunk_texture_system(
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Element {
+    None,
     Air,
     Sand,
+}
+
+impl From<u32> for Element {
+    fn from(value: u32) -> Self {
+        match value {
+            x if x == Element::Air as u32 => Element::Air,
+            x if x == Element::Sand as u32 => Element::Sand,
+            _ => Element::None,
+        }
+    }
+}
+
+fn gen_rule(
+    input: (Element, Element, Element, Element),
+    output: (Element, Element, Element, Element),
+) -> (u32, u32) {
+    (to_rule_state(input), to_rule_state(output))
+}
+
+fn to_rule_state(input: (Element, Element, Element, Element)) -> u32 {
+    ((input.0 as u32) << 24) + ((input.1 as u32) << 16) + ((input.2 as u32) << 8) + input.3 as u32
 }
