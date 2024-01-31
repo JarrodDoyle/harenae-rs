@@ -216,16 +216,16 @@ pub fn simulate_chunk_system(mut chunk: Query<&mut Chunk>) {
             // Same ordering as above.
             if start_state != end_state {
                 if (start_state & 0xFF000000) != (end_state & 0xFF000000) {
-                    chunk.set_cell(x, y + 1, Element::from((start_state >> 24) & 0xFF));
+                    chunk.set_cell(x, y + 1, Element::from((end_state >> 24) & 0xFF));
                 }
                 if (start_state & 0x00FF0000) != (end_state & 0x00FF0000) {
-                    chunk.set_cell(x + 1, y + 1, Element::from((start_state >> 16) & 0xFF));
+                    chunk.set_cell(x + 1, y + 1, Element::from((end_state >> 16) & 0xFF));
                 }
                 if (start_state & 0x0000FF00) != (end_state & 0x0000FF00) {
-                    chunk.set_cell(x, y, Element::from((start_state >> 8) & 0xFF));
+                    chunk.set_cell(x, y, Element::from((end_state >> 8) & 0xFF));
                 }
                 if (start_state & 0x000000FF) != (end_state & 0x000000FF) {
-                    chunk.set_cell(x + 1, y, Element::from(start_state & 0xFF));
+                    chunk.set_cell(x + 1, y, Element::from(end_state & 0xFF));
                 }
             }
         }
