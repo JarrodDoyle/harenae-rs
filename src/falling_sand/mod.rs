@@ -74,13 +74,21 @@ pub struct Chunk {
 
 impl Chunk {
     pub fn new(width: usize, height: usize) -> Self {
-        Self {
+        let mut initial = Self {
             step: 0,
             width,
             height,
             cells: vec![Element::Air; width * height],
             dirty_rect: DirtyRect::default(),
+        };
+
+        let max_y = height / 10;
+        for y in 0..=max_y {
+            for x in 0..width {
+                initial.set_cell(x, y, Element::Water);
+            }
         }
+        initial
     }
 
     pub fn set_cell(&mut self, x: usize, y: usize, element: Element) {
