@@ -101,14 +101,28 @@ impl Default for FallingSandRules {
 }
 
 impl FallingSandRules {
-    pub fn get_result(&self, input_rule: u32) -> u32 {
-        match self.rules.get(&input_rule) {
+    pub fn get_result(
+        &self,
+        input: (Element, Element, Element, Element),
+    ) -> (Element, Element, Element, Element) {
+        let input_rule = to_rule_state(input);
+        let output_rule = match self.rules.get(&input_rule) {
             Some(&result) => result,
             None => input_rule,
-        }
+        };
+        from_rule_state(output_rule)
     }
 }
 
-pub fn to_rule_state(input: (Element, Element, Element, Element)) -> u32 {
+fn to_rule_state(input: (Element, Element, Element, Element)) -> u32 {
     ((input.0 as u32) << 24) + ((input.1 as u32) << 16) + ((input.2 as u32) << 8) + input.3 as u32
+}
+
+fn from_rule_state(input: u32) -> (Element, Element, Element, Element) {
+    (
+        Element::from((input >> 24) & 0xFF),
+        Element::from((input >> 16) & 0xFF),
+        Element::from((input >> 8) & 0xFF),
+        Element::from(input & 0xFF),
+    )
 }

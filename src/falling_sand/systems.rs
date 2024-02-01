@@ -5,11 +5,7 @@ use bevy::{
 };
 use rand::Rng;
 
-use super::{
-    element::Element,
-    rules::{to_rule_state, FallingSandRules},
-    Chunk,
-};
+use super::{element::Element, rules::FallingSandRules, Chunk};
 
 pub fn place_sand(mut query: Query<&mut Chunk>) {
     for mut chunk in &mut query {
@@ -43,30 +39,27 @@ pub fn simulate_chunk(rules: Res<FallingSandRules>, mut query: Query<&mut Chunk>
                 // Get all the cells in our block and convert them to a rule state for lookup
                 // Because our offset can cause cell look-ups to go ourside of the grid we have
                 // a default `Element::None`
-                // Cells are obtained in the order top-left, top-right, bottom-left, bottom-right
-                let start_state = to_rule_state((
+                // Cells blocks are in the order top-left, top-right, bottom-left, bottom-right
+                let in_elements = (
                     chunk.get_cell(x, y + 1).unwrap_or(Element::None),
                     chunk.get_cell(x + 1, y + 1).unwrap_or(Element::None),
                     chunk.get_cell(x, y).unwrap_or(Element::None),
                     chunk.get_cell(x + 1, y).unwrap_or(Element::None),
-                ));
-                let end_state = rules.get_result(start_state);
+                );
+                let out_elements = rules.get_result(in_elements);
 
                 // We only need to actually update things if the state changed
-                // Same ordering as above.
-                if start_state != end_state {
-                    if (start_state & 0xFF000000) != (end_state & 0xFF000000) {
-                        chunk.set_cell(x, y + 1, Element::from((end_state >> 24) & 0xFF));
-                    }
-                    if (start_state & 0x00FF0000) != (end_state & 0x00FF0000) {
-                        chunk.set_cell(x + 1, y + 1, Element::from((end_state >> 16) & 0xFF));
-                    }
-                    if (start_state & 0x0000FF00) != (end_state & 0x0000FF00) {
-                        chunk.set_cell(x, y, Element::from((end_state >> 8) & 0xFF));
-                    }
-                    if (start_state & 0x000000FF) != (end_state & 0x000000FF) {
-                        chunk.set_cell(x + 1, y, Element::from(end_state & 0xFF));
-                    }
+                if in_elements.0 != out_elements.0 {
+                    chunk.set_cell(x, y + 1, out_elements.0);
+                }
+                if in_elements.1 != out_elements.1 {
+                    chunk.set_cell(x + 1, y + 1, out_elements.1);
+                }
+                if in_elements.2 != out_elements.2 {
+                    chunk.set_cell(x, y, out_elements.2);
+                }
+                if in_elements.3 != out_elements.3 {
+                    chunk.set_cell(x + 1, y, out_elements.3);
                 }
             }
         }
