@@ -1,35 +1,65 @@
 use bevy::{ecs::system::Resource, utils::HashMap};
 
-use super::Element;
+use super::{
+    element::{update_sand, update_water},
+    Element,
+};
 
-struct RuleConfig {
-    element_groups: Vec<Vec<Element>>,
-    rules: Vec<([usize; 4], [usize; 4])>,
+pub struct RuleBuilder {
+    elements: [Element; 4],
+    processed: [bool; 4],
+    position: i8,
 }
 
-impl RuleConfig {
-    fn compile(&self) -> HashMap<u32, u32> {
-        let mut rules = HashMap::new();
-        for i in 0..self.rules.len() {
-            let rule = self.rules[i];
+impl RuleBuilder {
+    pub fn build(input: (Element, Element, Element, Element)) -> u32 {
+        let mut block = RuleBuilder {
+            elements: [input.0, input.1, input.2, input.3],
+            processed: [false; 4],
+            position: 0,
+        };
 
-            let i0 = &self.element_groups[rule.0[0]];
-            let i1 = &self.element_groups[rule.0[1]];
-            let i2 = &self.element_groups[rule.0[2]];
-            let i3 = &self.element_groups[rule.0[3]];
+        for i in 0..4 {
+            if block.processed[i] {
+                continue;
+            }
 
-            let o0 = &self.element_groups[rule.1[0]];
-            let o1 = &self.element_groups[rule.1[1]];
-            let o2 = &self.element_groups[rule.1[2]];
-            let o3 = &self.element_groups[rule.1[3]];
-
-            // !HACK: Assume element groups are length 1 for now!
-            let input = to_rule_state((i0[0], i1[0], i2[0], i3[0]));
-            let output = to_rule_state((o0[0], o1[0], o2[0], o3[0]));
-            rules.insert(input, output);
+            block.position = i as i8;
+            let element = block.elements[i];
+            match element {
+                Element::Sand => update_sand(&mut block, element),
+                Element::Water => update_water(&mut block, element),
+                _ => {}
+            }
         }
 
-        rules
+        to_rule_state((
+            block.elements[0],
+            block.elements[1],
+            block.elements[2],
+            block.elements[3],
+        ))
+    }
+
+    pub fn get(&self, x: i8, y: i8) -> Element {
+        let x = x + (self.position % 2);
+        let y = (self.position / 2) - y;
+        if !(0..2).contains(&x) || !(0..2).contains(&y) {
+            return Element::None;
+        }
+
+        let idx = (x + y * 2) as usize;
+        self.elements[idx]
+    }
+
+    pub fn set(&mut self, x: i8, y: i8, element: Element) {
+        let x = x + (self.position % 2);
+        let y = (self.position / 2) - y;
+        if (0..2).contains(&x) && (0..2).contains(&y) {
+            let idx = (x + y * 2) as usize;
+            self.elements[idx] = element;
+            self.processed[idx] = true;
+        }
     }
 }
 
@@ -40,84 +70,31 @@ pub struct FallingSandRules {
 
 impl Default for FallingSandRules {
     fn default() -> Self {
-        // Pre-computed rules
-        // I should really start building a tool for this instead of manually calculating it huh
-        let rule_config = RuleConfig {
-            element_groups: vec![
-                vec![Element::Air],
-                vec![Element::Sand],
-                vec![Element::Water],
-            ],
-            rules: vec![
-                // Air/Sand
-                ([0, 1, 0, 0], [0, 0, 0, 1]),
-                ([0, 1, 0, 1], [0, 0, 1, 1]),
-                ([0, 1, 1, 0], [0, 0, 1, 1]),
-                ([1, 0, 0, 0], [0, 0, 1, 0]),
-                ([1, 0, 0, 1], [0, 0, 1, 1]),
-                ([1, 0, 1, 0], [0, 0, 1, 1]),
-                ([1, 1, 0, 0], [0, 0, 1, 1]),
-                ([1, 1, 0, 1], [0, 1, 1, 1]),
-                ([1, 1, 1, 0], [1, 0, 1, 1]),
-                // Air/Water
-                ([0, 2, 0, 0], [0, 0, 0, 2]),
-                ([0, 2, 0, 2], [0, 0, 2, 2]),
-                ([0, 2, 2, 0], [0, 0, 2, 2]),
-                ([2, 0, 0, 0], [0, 0, 2, 0]),
-                ([2, 0, 0, 2], [0, 0, 2, 2]),
-                ([2, 0, 2, 0], [0, 0, 2, 2]),
-                ([2, 2, 0, 0], [0, 0, 2, 2]),
-                ([2, 2, 0, 2], [0, 2, 2, 2]),
-                ([2, 2, 2, 0], [2, 0, 2, 2]),
-                ([0, 2, 2, 2], [2, 0, 2, 2]),
-                ([2, 0, 2, 2], [0, 2, 2, 2]),
-                // Air/Sand/Water
-                ([0, 1, 0, 2], [0, 0, 2, 1]),
-                ([0, 1, 1, 2], [0, 2, 1, 1]),
-                ([0, 1, 2, 0], [0, 0, 2, 1]),
-                ([0, 1, 2, 1], [2, 0, 1, 1]),
-                ([0, 1, 2, 2], [0, 2, 2, 1]),
-                ([0, 2, 0, 1], [0, 0, 2, 1]),
-                ([0, 2, 1, 0], [0, 0, 1, 2]),
-                ([0, 2, 1, 1], [2, 0, 1, 1]),
-                ([0, 2, 1, 2], [2, 0, 1, 2]),
-                ([0, 2, 2, 1], [2, 0, 2, 1]),
-                ([1, 0, 0, 2], [0, 0, 1, 2]),
-                ([1, 0, 1, 2], [0, 2, 1, 1]),
-                ([1, 0, 2, 0], [0, 0, 1, 2]),
-                ([1, 0, 2, 1], [2, 0, 1, 1]),
-                ([1, 0, 2, 2], [2, 0, 1, 2]),
-                ([1, 1, 0, 2], [0, 2, 1, 1]),
-                ([1, 1, 1, 2], [1, 2, 1, 1]),
-                ([1, 1, 2, 0], [2, 0, 1, 1]),
-                ([1, 1, 2, 1], [2, 1, 1, 1]),
-                ([1, 1, 2, 2], [2, 2, 1, 1]),
-                ([1, 2, 0, 0], [0, 0, 1, 2]),
-                ([1, 2, 0, 1], [0, 2, 1, 1]),
-                ([1, 2, 0, 2], [0, 2, 1, 2]),
-                ([1, 2, 1, 0], [0, 2, 1, 1]),
-                ([1, 2, 1, 2], [2, 2, 1, 1]),
-                ([1, 2, 2, 0], [0, 2, 1, 2]),
-                ([1, 2, 2, 1], [2, 2, 1, 1]),
-                ([1, 2, 2, 2], [2, 2, 1, 2]),
-                ([2, 0, 0, 1], [0, 0, 2, 1]),
-                ([2, 0, 1, 0], [0, 0, 1, 2]),
-                ([2, 0, 1, 1], [0, 2, 1, 1]),
-                ([2, 0, 1, 2], [0, 2, 1, 2]),
-                ([2, 0, 2, 1], [0, 2, 2, 1]),
-                ([2, 1, 0, 0], [0, 0, 2, 1]),
-                ([2, 1, 0, 1], [2, 0, 1, 1]),
-                ([2, 1, 0, 2], [2, 0, 2, 1]),
-                ([2, 1, 1, 0], [2, 0, 1, 1]),
-                ([2, 1, 1, 2], [2, 2, 1, 1]),
-                ([2, 1, 2, 0], [2, 0, 2, 1]),
-                ([2, 1, 2, 1], [2, 2, 1, 1]),
-                ([2, 1, 2, 2], [2, 2, 2, 1]),
-                ([2, 2, 0, 1], [0, 2, 2, 1]),
-                ([2, 2, 1, 0], [2, 0, 1, 2]),
-            ],
-        };
-        let rules = rule_config.compile();
+        // Build a list of elements
+        // We do it this way so it automatically handles adding new elements
+        let mut elements = vec![];
+        for i in 0..(Element::ElementCount as u32) {
+            elements.push(Element::from(i));
+        }
+
+        // Attempt to compute a rule for every possible element block permutation
+        // Only bother keeping the rule if the state actually changes
+        // TODO: See if there's a better way to build the permutations than nesting loops
+        let mut rules = HashMap::new();
+        for a in 0..elements.len() {
+            for b in 0..elements.len() {
+                for c in 0..elements.len() {
+                    for d in 0..elements.len() {
+                        let input = (elements[a], elements[b], elements[c], elements[d]);
+                        let in_rule = to_rule_state(input);
+                        let out_rule = RuleBuilder::build(input);
+                        if in_rule != out_rule {
+                            rules.insert(in_rule, out_rule);
+                        }
+                    }
+                }
+            }
+        }
 
         Self { rules }
     }
