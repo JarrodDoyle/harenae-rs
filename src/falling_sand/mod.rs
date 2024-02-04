@@ -15,6 +15,7 @@ use bevy::{
     sprite::SpriteBundle,
     transform::components::Transform,
 };
+use ndarray::Array2;
 use rand::Rng;
 
 use crate::util::DirtyRect;
@@ -75,7 +76,7 @@ pub struct Chunk {
     step: usize,
     width: usize,
     height: usize,
-    cells: Vec<Element>,
+    cells: Array2<Element>,
     dirty_rect: DirtyRect,
 }
 
@@ -85,7 +86,7 @@ impl Chunk {
             step: 0,
             width,
             height,
-            cells: vec![Element::Air; width * height],
+            cells: Array2::from_elem((width, height), Element::Air),
             dirty_rect: DirtyRect::default(),
         };
 
@@ -103,7 +104,7 @@ impl Chunk {
             return;
         }
 
-        self.cells[x + y * self.width] = element;
+        self.cells[(x, y)] = element;
         self.dirty_rect.add_point(x, y);
     }
 
@@ -112,9 +113,7 @@ impl Chunk {
             return;
         }
 
-        let i0 = x0 + y0 * self.width;
-        let i1 = x1 + y1 * self.width;
-        self.cells.swap(i0, i1);
+        self.cells.swap((x0, y0), (x1, y1));
         self.dirty_rect.add_point(x0, y0);
         self.dirty_rect.add_point(x1, y1);
     }
@@ -124,6 +123,6 @@ impl Chunk {
             return None;
         }
 
-        Some(self.cells[x + y * self.width])
+        Some(self.cells[(x, y)])
     }
 }

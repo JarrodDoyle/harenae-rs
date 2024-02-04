@@ -79,7 +79,7 @@ pub fn update_chunk_texture(
             for y in chunk.dirty_rect.range_y() {
                 for x in chunk.dirty_rect.range_x() {
                     let mut colour = (0, 0, 0);
-                    if let Some(element) = chunk.cells.get(x + y * chunk.width) {
+                    if let Some(element) = chunk.get_cell(x, y) {
                         match element {
                             Element::Air => colour = (25, 24, 26),
                             Element::Sand => colour = (255, 216, 102),
