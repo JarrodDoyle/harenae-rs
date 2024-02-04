@@ -1,11 +1,9 @@
-mod falling_sand;
-mod util;
-
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
     window::PresentMode,
 };
+use haranae_rs::falling_sand;
 
 fn main() {
     let window_plugin = WindowPlugin {

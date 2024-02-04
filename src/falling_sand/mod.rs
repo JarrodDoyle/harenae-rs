@@ -1,5 +1,5 @@
 mod element;
-mod rules;
+pub mod rules;
 mod systems;
 
 use bevy::{
