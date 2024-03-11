@@ -21,9 +21,16 @@ impl Chunk {
             step: 0,
             width,
             height,
-            cells: Array2::from_elem((width, height), Element::Air),
+            cells: Array2::from_elem((width + 2, height + 2), Element::None),
             dirty_rect: DirtyRect::default(),
         };
+
+        // Set Main area to air
+        for y in 0..height {
+            for x in 0..width {
+                initial.set_cell(x, y, Element::Air);
+            }
+        }
 
         let max_y = height / rand::thread_rng().gen_range(2..10);
         for y in 0..=max_y {
@@ -39,24 +46,20 @@ impl Chunk {
             return;
         }
 
+        let x = x + 1;
+        let y = y + 1;
+
         self.cells[(x, y)] = element;
-        self.dirty_rect.add_point(x, y);
-    }
-
-    pub fn swap_cells(&mut self, x0: usize, y0: usize, x1: usize, y1: usize) {
-        if x0 >= self.width || y0 >= self.height || x1 >= self.width || y1 >= self.height {
-            return;
-        }
-
-        self.cells.swap((x0, y0), (x1, y1));
-        self.dirty_rect.add_point(x0, y0);
-        self.dirty_rect.add_point(x1, y1);
+        self.dirty_rect.add_point(x - 1, y - 1);
     }
 
     pub fn get_cell(&self, x: usize, y: usize) -> Option<Element> {
         if x >= self.width || y >= self.height {
             return None;
         }
+
+        let x = x + 1;
+        let y = y + 1;
 
         Some(self.cells[(x, y)])
     }
@@ -69,18 +72,20 @@ impl Chunk {
         self.step = (self.step + 1) % 4;
 
         // Faster to reuse rather than keep remaking it within the loops
+        // Also we directly access the cells here rather than using the helper function
+        // because we know the values will never be out of bounds
         let mut in_elements: [Element; 4] = [Element::None; 4];
         for block_y in 0..(self.height / 2) {
-            let y = block_y * 2 + block_offset.1;
+            let y = block_y * 2 + block_offset.1 + 1;
             for block_x in 0..(self.width / 2) {
-                let x = block_x * 2 + block_offset.0;
+                let x = block_x * 2 + block_offset.0 + 1;
 
                 // Get all the cells in our block and convert them to a rule state for lookup
                 // Because our offset can cause cell look-ups to go ourside of the grid we have
                 // a default `Element::None`
                 for i in 0..offsets.len() {
                     let o = offsets[i];
-                    in_elements[i] = self.get_cell(x + o.0, y + o.1).unwrap_or(Element::None);
+                    in_elements[i] = self.cells[(x + o.0, y + o.1)];
                 }
                 let out_elements = rules.get_result(&in_elements);
 
@@ -88,7 +93,9 @@ impl Chunk {
                 for i in 0..offsets.len() {
                     let o = offsets[i];
                     if in_elements[i] != out_elements[i] {
-                        self.set_cell(x + o.0, y + o.1, out_elements[i]);
+                        let pos = (x + o.0, y + o.1);
+                        self.cells[pos] = out_elements[i];
+                        self.dirty_rect.add_point(pos.0 - 1, pos.1 - 1);
                     }
                 }
             }
