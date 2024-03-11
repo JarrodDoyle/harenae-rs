@@ -1,3 +1,4 @@
+mod chunk;
 mod element;
 pub mod rules;
 mod systems;
@@ -15,12 +16,8 @@ use bevy::{
     sprite::SpriteBundle,
     transform::components::Transform,
 };
-use ndarray::Array2;
-use rand::Rng;
 
-use crate::util::DirtyRect;
-
-use self::{element::Element, rules::FallingSandRules};
+use self::{chunk::Chunk, element::Element, rules::FallingSandRules};
 
 pub struct FallingSandPlugin;
 
@@ -69,60 +66,4 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
 
     commands.spawn(Chunk::new(256, 256)).insert(sprite_bundle1);
     commands.spawn(Chunk::new(256, 256)).insert(sprite_bundle2);
-}
-
-#[derive(Component)]
-pub struct Chunk {
-    step: usize,
-    width: usize,
-    height: usize,
-    cells: Array2<Element>,
-    dirty_rect: DirtyRect,
-}
-
-impl Chunk {
-    pub fn new(width: usize, height: usize) -> Self {
-        let mut initial = Self {
-            step: 0,
-            width,
-            height,
-            cells: Array2::from_elem((width, height), Element::Air),
-            dirty_rect: DirtyRect::default(),
-        };
-
-        let max_y = height / rand::thread_rng().gen_range(2..10);
-        for y in 0..=max_y {
-            for x in 0..width {
-                initial.set_cell(x, y, Element::Water);
-            }
-        }
-        initial
-    }
-
-    pub fn set_cell(&mut self, x: usize, y: usize, element: Element) {
-        if x >= self.width || y >= self.height {
-            return;
-        }
-
-        self.cells[(x, y)] = element;
-        self.dirty_rect.add_point(x, y);
-    }
-
-    pub fn swap_cells(&mut self, x0: usize, y0: usize, x1: usize, y1: usize) {
-        if x0 >= self.width || y0 >= self.height || x1 >= self.width || y1 >= self.height {
-            return;
-        }
-
-        self.cells.swap((x0, y0), (x1, y1));
-        self.dirty_rect.add_point(x0, y0);
-        self.dirty_rect.add_point(x1, y1);
-    }
-
-    pub fn get_cell(&self, x: usize, y: usize) -> Option<Element> {
-        if x >= self.width || y >= self.height {
-            return None;
-        }
-
-        Some(self.cells[(x, y)])
-    }
 }

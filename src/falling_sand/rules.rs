@@ -12,9 +12,9 @@ pub struct RuleBuilder {
 }
 
 impl RuleBuilder {
-    pub fn build(input: (Element, Element, Element, Element)) -> u32 {
+    pub fn build(input: &[Element; 4]) -> u32 {
         let mut block = RuleBuilder {
-            elements: [input.0, input.1, input.2, input.3],
+            elements: *input,
             processed: [false; 4],
             position: 0,
         };
@@ -33,12 +33,7 @@ impl RuleBuilder {
             }
         }
 
-        to_rule_state((
-            block.elements[0],
-            block.elements[1],
-            block.elements[2],
-            block.elements[3],
-        ))
+        to_rule_state(&block.elements)
     }
 
     pub fn get(&self, x: i8, y: i8) -> Element {
@@ -85,9 +80,9 @@ impl Default for FallingSandRules {
             for b in 0..elements.len() {
                 for c in 0..elements.len() {
                     for d in 0..elements.len() {
-                        let input = (elements[a], elements[b], elements[c], elements[d]);
-                        let in_rule = to_rule_state(input);
-                        let out_rule = RuleBuilder::build(input);
+                        let input = [elements[a], elements[b], elements[c], elements[d]];
+                        let in_rule = to_rule_state(&input);
+                        let out_rule = RuleBuilder::build(&input);
                         if in_rule != out_rule {
                             rules.insert(in_rule, out_rule);
                         }
@@ -101,11 +96,8 @@ impl Default for FallingSandRules {
 }
 
 impl FallingSandRules {
-    pub fn get_result(
-        &self,
-        input: (Element, Element, Element, Element),
-    ) -> (Element, Element, Element, Element) {
-        let input_rule = to_rule_state(input);
+    pub fn get_result(&self, input: &[Element; 4]) -> [Element; 4] {
+        let input_rule = to_rule_state(&input);
         let output_rule = match self.rules.get(&input_rule) {
             Some(&result) => result,
             None => input_rule,
@@ -114,15 +106,18 @@ impl FallingSandRules {
     }
 }
 
-fn to_rule_state(input: (Element, Element, Element, Element)) -> u32 {
-    ((input.0 as u32) << 24) + ((input.1 as u32) << 16) + ((input.2 as u32) << 8) + input.3 as u32
+fn to_rule_state(input: &[Element; 4]) -> u32 {
+    ((input[0] as u32) << 24)
+        + ((input[1] as u32) << 16)
+        + ((input[2] as u32) << 8)
+        + input[3] as u32
 }
 
-fn from_rule_state(input: u32) -> (Element, Element, Element, Element) {
-    (
+fn from_rule_state(input: u32) -> [Element; 4] {
+    [
         Element::from((input >> 24) & 0xFF),
         Element::from((input >> 16) & 0xFF),
         Element::from((input >> 8) & 0xFF),
         Element::from(input & 0xFF),
-    )
+    ]
 }
